@@ -59,7 +59,9 @@ for my $subsheet (findFiles($directory)) {
     if(opendir(my $dh, $sheetPath)) {
         closedir $dh;
         
-        #Covert string to UTF8
+        #Covert UTF8 to perl internal bytes
+        #TODO: I guess Excel module only accept this kind of data 
+        #TODO: However, output of Excel is UTF8 too. confusing.
         $subsheet = decode("utf8",$subsheet);
         print "Sheet: $subsheet\n" if $debug;
 
@@ -73,7 +75,7 @@ for my $subsheet (findFiles($directory)) {
             my @treeOutputs = split /\n/, qx(tree $sheetPath/$subDir);
             my $errorCount = grep { /error opening dir/ } @treeOutputs;
 
-            #Covert string to UTF8
+            #Covert UTF8 to perl internal bytes
             $subDir = decode("utf8",$subDir);
             print "$subDir\n" if $debug;
             print "ErrorCounts: $errorCount\n" if $debug;
