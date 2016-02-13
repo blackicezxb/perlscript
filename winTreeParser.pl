@@ -23,8 +23,8 @@ $outFile .= "_".$padString;
 binmode(STDOUT, ":encoding(utf8)");
 print "Filename $outFile\n";
 
-open(my $inputFh, "<:encoding(utf8)", $inputFile);
-#open(my $inputFh, "<:encoding(cp1252)", $inputFile);
+#open(my $inputFh, "<:encoding(utf8)", $inputFile);
+open(my $inputFh, "<:encoding(euc-cn)", $inputFile);
 
 # Create a new Excel workbook
 my $workbook = Excel::Writer::XLSX->new($outFile);
@@ -57,7 +57,7 @@ my $worksheet;
 
 while(!eof($inputFh)) {
     my $tmpLine = readline($inputFh);  
-
+    print $tmpLine if ($tmpVar==0);
     if($tmpLine =~ /^(├─|└─)(.*)\n/) {
         #die if $tmpVar;
         print "SheetName: $2\n" if $debug;
