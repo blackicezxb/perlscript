@@ -45,6 +45,7 @@ for my $tmpLine (@diffStrings) {
 
         @oldArray = (); 
         @newArray = ();
+        $newIdx=0;
         #print "NewStart: $newStart\n";
     } elsif( $tmpLine =~ /^<\W*(\w.*)/) {
         #print "OLD: $1\n";
@@ -62,14 +63,10 @@ for my $tmpLine (@diffStrings) {
         }
     } 
 
-    if ( $tmpLine eq "---") {
-        $newIdx=0;
-        #print "RESET newIdx\n";
-    } else {
+    if ( $tmpLine =~ /^>/){
         $newIdx++;
     }
 }
-
 
 #open(my $inputFh, "<:encoding(utf8)", $inputFile);
 open(my $inputFh, "<:encoding(euc-cn)", $inputFile);
