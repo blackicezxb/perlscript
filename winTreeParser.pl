@@ -22,8 +22,8 @@ my $padString = sprintf("%04d%02d%02d", $year, $mon, $mday).".xlsx";
 
 $outFile .= "_".$padString;
 
-binmode(STDOUT, ":encoding(utf8)");
 print "Filename $outFile\n";
+binmode(STDOUT, ":encoding(utf8)");
 
 
 
@@ -33,7 +33,7 @@ my @diffStrings= split /\n/, $diffOutput;
 
 #Parse two file differences
 my $newStart;
-my (@oldArray, @newArray, @diffArray); 
+my (@oldArray, @diffArray); 
 my $newIdx;
 @diffArray = ();
 
@@ -42,9 +42,17 @@ for my $tmpLine (@diffStrings) {
     
     if( $tmpLine =~ /^\d.*c(\d+)(,(\d+))?/ ) {
         $newStart = $1;
-
         @oldArray = (); 
-        @newArray = ();
+        $newIdx=0;
+        #print "NewStart: $newStart\n";
+    } elsif ($tmpLine =~ /d(\d+)$/) { 
+        $newStart = $1;
+        @oldArray = (); 
+        $newIdx=0;
+        #print "NewStart: $newStart\n";
+    } elsif ($tmpLine =~ /a(\d+),?/) { 
+        $newStart = $1;
+        @oldArray = (); 
         $newIdx=0;
         #print "NewStart: $newStart\n";
     } elsif( $tmpLine =~ /^<\W*(\w.*)/) {
@@ -54,7 +62,7 @@ for my $tmpLine (@diffStrings) {
         my $tmpNum = $newIdx + $newStart; 
         if($newIdx <= $#oldArray) {
             if($1 ne $oldArray[$newIdx]) {
-                print "$tmpNum\n";
+                #print "$tmpNum\n";
                 push @diffArray, $tmpNum; 
             }
         } else {
