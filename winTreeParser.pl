@@ -5,9 +5,9 @@ use strict;
 use Excel::Writer::XLSX;
 use Encode qw(decode encode);
 
-my $usage = "Usage: <script.pl> <input> <oldInput> <filename> ";
+my $usage = "Usage: <script.pl> <input> <oldInput> <filename> <targetPath>";
 
-my ($inputFile, $oldFile, $outFile) = @ARGV;
+my ($inputFile, $oldFile, $outFile, $targetPath) = @ARGV;
 
 $inputFile && $outFile || die ( "$usage" );
 
@@ -17,8 +17,8 @@ $outFile =~ s/\.xls(x?)//;
 my ($sec,$min,$hour,$mday,$mon,$year) = localtime;
 $year += 1900;
 $mon  += 1;
-#my $padString = sprintf("%04d%02d%02d_%02d%02d%02d", $year, $mon, $mday, $hour, $min, $sec).".xlsx";
-my $padString = sprintf("%04d%02d%02d", $year, $mon, $mday).".xlsx";
+my $padString = sprintf("%04d%02d%02d_%02d%02d%02d", $year, $mon, $mday, $hour, $min, $sec).".xlsx";
+#my $padString = sprintf("%04d%02d%02d", $year, $mon, $mday).".xlsx";
 
 $outFile .= "_".$padString;
 
@@ -111,6 +111,32 @@ $firstFormat->set_font("Times New Roman");
 $firstFormat->set_size(16);
 $firstFormat->set_italic(1);
 
+my %directHash;
+sub createDirect{
+    my $inputKey = shift;
+    my $current = shift;
+
+    foreach my $key (keys %directHash) {
+        if($key >= ($inputKey - 1)) {
+            delete $directHash{$key};
+        }
+    }
+    $directHash{$inputKey} = $current;
+}
+
+sub getDirectory{
+    my $direct;
+
+    if(defined($targetPath)){
+        $direct = "\\\\lmssha-ns01/Common/LMS/LMS LSR/".decode('utf8',$targetPath)."/";
+    }
+
+    foreach my $key (sort keys %directHash) {
+        $direct .= $directHash{$key}."/";
+    }
+    return $direct;
+}
+
 # Enable verbose output
 my $debug = 1;
 
@@ -127,7 +153,7 @@ while(!eof($inputFh)) {
     $lineNum++;
 
     #print $tmpLine if ($tmpVar==0);
-    if($tmpLine =~ /^(├─|└─)(.*)\n/) {
+    if($tmpLine =~ /^(├─|└─)(.*)\r\n/) {
         #die if $tmpVar;
         print "SheetName: $2\n" if $debug;
         #Create new worksheet
@@ -139,18 +165,33 @@ while(!eof($inputFh)) {
 
         $worksheet->write($rowNum++, 0, $subsheet, $firstFormat);
         $tmpVar++;
+
+        $tmpLine = $2;
+        $tmpLine =~ s/(\w*)\r\n/$1/;
+        $directHash{0} = $tmpLine;
     } else {
         if(defined($worksheet)) {
             $tmpLine = substr $tmpLine, 3;
             #print $tmpLine;
-            if($tmpLine =~ /^\s?(├─|└─)/) {
+            if($tmpLine =~ /^\s?(├─|└─)/g) {
+                #print "KEY:", pos $tmpLine, "\n";
+                my $fileName = $tmpLine; 
+                $fileName =~ s/\W*//;
+                $fileName =~ s/(\w*)\r\n/$1/;
+                createDirect(pos $tmpLine, $fileName);
                 my $cellFormat = $topFormat;
                 if($#diffArray >= $diffIdx) { if($lineNum == $diffArray[$diffIdx]) {
                     $cellFormat = $highlightTop;
                     #print "LINENUM: $lineNum\n";
                     $diffIdx++;
                 }}
-                $worksheet->write($rowNum++, 0, $tmpLine, $cellFormat);
+
+                if(defined($targetPath)) {
+                    my $urlStr = "external:".getDirectory();
+                    $worksheet->write($rowNum++, 0, $urlStr, $tmpLine, $cellFormat);
+                } else {
+                    $worksheet->write($rowNum++, 0, $tmpLine, $cellFormat);
+                }
             } else {
                 my $cellFormat = $itemFormat;
                 if($#diffArray >= $diffIdx) { if($lineNum == $diffArray[$diffIdx]) {
@@ -158,7 +199,33 @@ while(!eof($inputFh)) {
                     #print "LINENUM: $lineNum\n";
                     $diffIdx++;
                 }}
-                $worksheet->write($rowNum++, 0, $tmpLine, $cellFormat);
+
+                if( $tmpLine =~ /(├─|└─)/g ) {
+                    #print "KEY:", pos $tmpLine, "\n";
+                    my $fileName = $tmpLine; 
+                    $fileName =~ s/\W*//;
+                    $fileName =~ s/(\w*)\r\n/$1/;
+                    createDirect(pos $tmpLine, $fileName);
+                    if(defined($targetPath)) {
+                        my $urlStr = "external:".getDirectory();
+                        $worksheet->write($rowNum++, 0, $urlStr, $tmpLine, $cellFormat);
+                    } else {
+                        $worksheet->write($rowNum++, 0, $tmpLine, $cellFormat);
+                    }
+                } else {
+                    if(defined($targetPath)) {
+                        my $fileName = $tmpLine; 
+                        $fileName =~ s/\W*//;
+                        $fileName =~ s/(\w*)\r\n/$1/;
+                        my $urlStr = "external:".getDirectory().$fileName;
+                        if((length $urlStr) > 215 ) {
+                            $urlStr = "external:".getDirectory();
+                        }
+                        $worksheet->write($rowNum++, 0, $urlStr, $tmpLine, $cellFormat); 
+                    } else {
+                        $worksheet->write($rowNum++, 0, $tmpLine, $cellFormat);
+                    }
+                }
             }
         }
     }
